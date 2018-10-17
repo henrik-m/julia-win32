@@ -72,7 +72,7 @@ MSG() = MSG(C_NULL,0,0,0)
 
 ##### End Structs #####
 
-function WndProc(hwnd::Ptr{Cvoid}, msg::Cuint, wParam::Culonglong, lParam::Clonglong)::Clonglong
+function defWindowProc(hwnd::Ptr{Cvoid}, msg::Cuint, wParam::Culonglong, lParam::Clonglong)::Clonglong
     if msg == WM_CLOSE
         # DestroyWindow(hwnd)
         ccall((:DestroyWindow,"user32"),Cint,(Ptr{Cvoid},),hwnd)
@@ -86,14 +86,14 @@ function WndProc(hwnd::Ptr{Cvoid}, msg::Cuint, wParam::Culonglong, lParam::Clong
     return 0
 end
 
-WndProcC = @cfunction(WndProc, Clonglong, (Ptr{Cvoid},Cuint,Culonglong,Clonglong,))
+defWindowProcC = @cfunction(defWindowProc, Clonglong, (Ptr{Cvoid},Cuint,Culonglong,Clonglong,))
 
-function registerWindowClass(classname::Cwstring)
+function registerWindowClass(classname::Cwstring, windowProc::Ptr{Cvoid} = C_NULL)
 
     wcex = WNDCLASSEXW(
         sizeof(WNDCLASSEXW),
         0,
-        WndProcC,
+        windowProc == C_NULL ? defWindowProcC : windowProc,
         0,
         0,
         C_NULL,
@@ -115,10 +115,10 @@ function registerWindowClass(classname::Cwstring)
     (atom, error)
 end
 
-function registerWindowClass(classname)
+function registerWindowClass(classname, windowProc = C_NULL)
     classname_cwstring =
         Base.unsafe_convert(Cwstring,Base.cconvert(Cwstring,string(classname)))
-    registerWindowClass(classname_cwstring)
+    registerWindowClass(classname_cwstring, windowProc)
 end
 
 function unregisterWindowClass(classname::Cwstring)
