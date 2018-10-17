@@ -5,6 +5,7 @@ module WinApi
 ###### Window Messages #####
 const WM_CLOSE   = convert(Cuint,0x0010)
 const WM_DESTROY = convert(Cuint,0x0002)
+const WM_LBUTTONDOWN = convert(Cuint, 0x0201)
 
 ##### Extended Window Styles #####
 const WS_EX_CLIENTEDGE = convert(Culong,0x00000200)
@@ -65,6 +66,9 @@ mutable struct MSG
     time::Culong
     pt::POINT
 end
+
+MSG(hwnd, msg, wParam, lParam) = MSG(hwnd, msg, wParam, lParam, 0, POINT(0, 0))
+MSG() = MSG(C_NULL,0,0,0)
 
 ##### End Structs #####
 
@@ -185,7 +189,7 @@ function showWindow(hwnd::Ptr{Cvoid})
     ccall((:ShowWindow, "user32"), Cint, (Ptr{Cvoid}, Cint), hwnd, SW_SHOWDEFAULT)
     ccall((:UpdateWindow, "user32"), Cint, (Ptr{Cvoid},), hwnd)
 
-    msg = MSG(C_NULL,0,0,0,0,POINT(0,0))
+    msg = MSG()
     ptr_msg = pointer_from_objref(msg)
     while (ccall((:GetMessageW,"user32"),Cint,(Ptr{MSG},Ptr{Cvoid},Cuint,Cuint),ptr_msg,C_NULL,0,0) > 0)
         ccall((:TranslateMessage,"user32"),Cint,(Ptr{MSG},),ptr_msg)
