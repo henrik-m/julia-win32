@@ -1,5 +1,20 @@
 module WinApi
 
+export WM_CLOSE, WM_DESTROY, WM_LBUTTONDOWN
+export WS_EX_CLIENTEDGE, WS_EX_WINDOWEDGE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    WS_EX_OVERLAPPEDWINDOW, WS_EX_PALETTEWINDOW
+export WS_OVERLAPPED, WS_CAPTION, WS_SYSMENU, WS_THICKFRAME, WS_MINIMIZEBOX,
+    WS_MAXIMIZEBOX, WS_OVERLAPPEDWINDOW
+export SW_SHOWDEFAULT
+export CW_USEDEFAULT
+export MF_BITMAP, MF_CHECKED, MF_DISABLED, MF_ENABLED, MF_GRAYED, MF_MENUBARBREAK,
+    MF_MENUBREAK, MF_OWNERDRAW, MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED
+export POINT, MSG, @winproc
+export getlasterror, defwindowproc, destroywindow, post_quitmessage, registerclass,
+    unregisterclass, createwindow, showwindow, updatewindow, getmessage, translatemessage,
+    dispatchmessage, iswindow, createmenu, createpopupmenu, appendmenu, setmenu,
+    showwindow_wait, openwindow
+
 ###### Begin Constants #####
 
 ###### Window Messages #####
@@ -33,6 +48,20 @@ const CW_USEDEFAULT = convert(Cint,-2147483648)
 ##### WinApi Error Codes #####
 const ERROR_INVALID_WINDOW_HANDLE = convert(Culong,0x00000578)
 const ERROR_CLASS_ALREADY_EXISTS = convert(Culong,0x00000582)
+
+##### Menu creation flags #####
+const MF_BITMAP = convert(Cuint, 0x00000004)
+const MF_CHECKED = convert(Cuint, 0x00000008)
+const MF_DISABLED = convert(Cuint, 0x00000002)
+const MF_ENABLED = convert(Cuint, 0x00000000)
+const MF_GRAYED = convert(Cuint, 0x00000001)
+const MF_MENUBARBREAK = convert(Cuint, 0x00000020)
+const MF_MENUBREAK = convert(Cuint, 0x00000040)
+const MF_OWNERDRAW = convert(Cuint, 0x00000100)
+const MF_POPUP = convert(Cuint, 0x00000010)
+const MF_SEPARATOR = convert(Cuint, 0x00000800)
+const MF_STRING = convert(Cuint, 0x00000000)
+const MF_UNCHECKED = convert(Cuint, 0x00000000)
 
 ##### End Constants #####
 
@@ -211,6 +240,32 @@ end
 function iswindow(hwnd)
     ret = ccall((:IsWindow, "user32"), Cint, (Ptr{Cvoid},), hwnd)
     ret != 0
+end
+
+function createmenu()
+    ret = ccall((:CreateMenu, "user32"), Ptr{Cvoid}, ())
+    err = ret == C_NULL ? getlasterror() : 0
+    (ret, err)
+end
+
+function createpopupmenu()
+    ret = ccall((:CreatePopupMenu, "user32"), Ptr{Cvoid}, ())
+    err = ret == C_NULL ? getlasterror() : 0
+    (ret, err)
+end
+
+function appendmenu(hmenu, flags, idNewItem, newItem)
+    ret = ccall((:AppendMenuW, "user32"), Cint,
+        (Ptr{Cvoid}, Cuint, Culonglong, Cwstring),
+        hmenu, flags, idNewItem, newItem)
+    err = ret == 0 ? getlasterror() : 0
+    (ret, err)
+end
+
+function setmenu(hwnd, hmenu)
+    ret = ccall((:SetMenu, "user32"), Cint, (Ptr{Cvoid}, Ptr{Cvoid}), hwnd, hmenu)
+    err = ret == 0 ? getlasterror() : 0
+    (ret, err)
 end
 
 function showwindow_wait(hwnd)
