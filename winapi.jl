@@ -72,72 +72,83 @@ MSG() = MSG(C_NULL,0,0,0)
 
 ##### End Structs #####
 
-function defWindowProc(hwnd::Ptr{Cvoid}, msg::Cuint, wParam::Culonglong, lParam::Clonglong)::Clonglong
+macro winproc(proc)
+    return :( @cfunction($proc, Clonglong, (Ptr{Cvoid},Cuint,Culonglong,Clonglong,)) )
+end
+
+function cwstring(val)
+    val == C_NULL || isa(val, Cwstring) ? val :
+        Base.unsafe_convert(Cwstring,Base.cconvert(Cwstring,string(val)))
+end
+
+function getlasterror()
+    ccall((:GetLastError, "kernel32"), Culong, ())
+end
+
+function defwindowproc(hwnd, msg, wParam, lParam)
+    ccall((:DefWindowProcW,"user32"),Clonglong,(Ptr{Cvoid},Cuint,Culonglong,Clonglong),hwnd,msg,wParam,lParam)
+end
+
+function destroywindow(hwnd)
+    ret = ccall((:DestroyWindow,"user32"),Cint,(Ptr{Cvoid},),hwnd)
+    error = ret == C_NULL ? getlasterror() : 0
+    (ret, error)
+end
+
+function post_quitmessage(exitcode)
+    ccall((:PostQuitMessage,"user32"),Cvoid,(Cint,),exitcode)
+end
+
+function windowproc(hwnd, msg, wParam, lParam)
     if msg == WM_CLOSE
-        # DestroyWindow(hwnd)
-        ccall((:DestroyWindow,"user32"),Cint,(Ptr{Cvoid},),hwnd)
+        destroywindow(hwnd)
     elseif msg == WM_DESTROY
-        # PostQuitMessage(0)
-        ccall((:PostQuitMessage,"user32"),Cvoid,(Cint,),0)
+        post_quitmessage(0)
     else
-        # return DefWindowProc(hwnd,msg,wParam,lParam)
-        return ccall((:DefWindowProcW,"user32"),Clonglong,(Ptr{Cvoid},Cuint,Culonglong,Clonglong),hwnd,msg,wParam,lParam)
+        return defwindowproc(hwnd, msg, wParam, lParam)
     end
     return 0
 end
 
-defWindowProcC = @cfunction(defWindowProc, Clonglong, (Ptr{Cvoid},Cuint,Culonglong,Clonglong,))
+windowproc_c = @winproc(windowproc)
 
-function registerWindowClass(classname::Cwstring, windowProc::Ptr{Cvoid} = C_NULL)
+function registerclass(classname;
+    proc = C_NULL,
+    instance = C_NULL,
+    icon = C_NULL,
+    cursor = C_NULL,
+    bg = C_NULL,
+    menu = C_NULL,
+    iconSm = C_NULL)
 
     wcex = WNDCLASSEXW(
         sizeof(WNDCLASSEXW),
         0,
-        windowProc == C_NULL ? defWindowProcC : windowProc,
+        proc == C_NULL ? windowproc_c : proc,
         0,
         0,
-        C_NULL,
-        C_NULL,
-        C_NULL,
-        C_NULL,
-        C_NULL,
-        classname,
-        C_NULL
+        instance,
+        icon,
+        cursor,
+        bg,
+        cwstring(menu),
+        cwstring(classname),
+        iconSm
     )
 
     atom = ccall((:RegisterClassExW, "user32"), Cushort, (Ptr{WNDCLASSEXW},), pointer_from_objref(wcex))
-    if (atom == 0)
-        error = ccall((:GetLastError, "kernel32"), Culong, ())
-    else
-        error = 0
-    end
+    error = atom == 0 ? getlasterror() : 0
 
     (atom, error)
 end
 
-function registerWindowClass(classname, windowProc = C_NULL)
-    classname_cwstring =
-        Base.unsafe_convert(Cwstring,Base.cconvert(Cwstring,string(classname)))
-    registerWindowClass(classname_cwstring, windowProc)
-end
-
-function unregisterWindowClass(classname::Cwstring)
+function unregisterclass(classname)
     ret = ccall((:UnregisterClassW, "user32"), Cint, (Cwstring, Ptr{Cvoid}), classname, C_NULL)
-    if (ret == 0)
-        error = ccall((:GetLastError, "kernel32"), Culong, ())
-    else
-        error = 0
-    end
+    error = ret == 0 ? getlasterror() : 0
     (ret, error)
 end
 
-function unregisterWindowClass(classname)
-    classname_cwstring =
-        Base.unsafe_convert(Cwstring,Base.cconvert(Cwstring,string(classname)))
-    unregisterWindowClass(classname_cwstring)
-end
-
-function createWindow(;
+function createwindow(;
     classname = :WC_DEFAULT,
     title = "Untitled",
     x = CW_USEDEFAULT,
@@ -149,7 +160,7 @@ function createWindow(;
 
     # If the window is created with the default class, that class is auto-registered
     if classname == :WC_DEFAULT
-        (_, err) = registerWindowClass(:WC_DEFAULT)
+        (_, err) = registerclass(:WC_DEFAULT)
         if err != 0 && err != ERROR_CLASS_ALREADY_EXISTS
             return (0, err)
         end
@@ -172,40 +183,61 @@ function createWindow(;
         C_NULL,
         C_NULL)
 
-    if(hwnd == C_NULL)
-        error = ccall((:GetLastError, "kernel32"), Culong, ())
-    else
-        error = 0
-    end
+    error = hwnd == C_NULL ? getlasterror() : 0
 
     (hwnd, error)
 end
 
-function showWindow(hwnd::Ptr{Cvoid})
-    if ccall((:IsWindow, "user32"), Cint, (Ptr{Cvoid},), hwnd) == 0
+function showwindow(hwnd, nCmdShow = SW_SHOWDEFAULT)
+    ccall((:ShowWindow, "user32"), Cint, (Ptr{Cvoid}, Cint), hwnd, nCmdShow)
+end
+
+function updatewindow(hwnd)
+    ccall((:UpdateWindow, "user32"), Cint, (Ptr{Cvoid},), hwnd)
+end
+
+function getmessage(ptr_msg, hwnd = C_NULL)
+    ccall((:GetMessageW,"user32"),Cint,(Ptr{MSG},Ptr{Cvoid},Cuint,Cuint),ptr_msg,C_NULL,0,0)
+end
+
+function translatemessage(ptr_msg)
+    ccall((:TranslateMessage,"user32"),Cint,(Ptr{MSG},),ptr_msg)
+end
+
+function dispatchmessage(ptr_msg)
+    ccall((:DispatchMessageW,"user32"),Clonglong,(Ptr{MSG},),ptr_msg)
+end
+
+function iswindow(hwnd)
+    ret = ccall((:IsWindow, "user32"), Cint, (Ptr{Cvoid},), hwnd)
+    ret != 0
+end
+
+function showwindow_wait(hwnd)
+    if !iswindow(hwnd)
         return (0, ERROR_INVALID_WINDOW_HANDLE)
     end
 
-    ccall((:ShowWindow, "user32"), Cint, (Ptr{Cvoid}, Cint), hwnd, SW_SHOWDEFAULT)
-    ccall((:UpdateWindow, "user32"), Cint, (Ptr{Cvoid},), hwnd)
+    showwindow(hwnd)
+    updatewindow(hwnd)
 
     msg = MSG()
     ptr_msg = pointer_from_objref(msg)
-    while (ccall((:GetMessageW,"user32"),Cint,(Ptr{MSG},Ptr{Cvoid},Cuint,Cuint),ptr_msg,C_NULL,0,0) > 0)
-        ccall((:TranslateMessage,"user32"),Cint,(Ptr{MSG},),ptr_msg)
-        ccall((:DispatchMessageW,"user32"),Clonglong,(Ptr{MSG},),ptr_msg)
+    while getmessage(ptr_msg) > 0
+        translatemessage(ptr_msg)
+        dispatchmessage(ptr_msg)
     end
     return (msg.wParam, 0)
 end
 
-function openWindow(;kwargs...)
-    (hwnd, err) = createWindow(;kwargs...)
+function openwindow(;kwargs...)
+    (hwnd, err) = createwindow(;kwargs...)
 
     if err != 0
         return (hwnd, err)
     end
 
-    showWindow(hwnd)
+    showwindow_wait(hwnd)
 end
 
 end
