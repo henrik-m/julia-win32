@@ -1,6 +1,9 @@
 module WinApi
 
-export WM_CLOSE, WM_DESTROY, WM_LBUTTONDOWN
+export IMAGE_BITMAP, IMAGE_ICON, IMAGE_CURSOR
+export LR_CREATEDIBSECTION, LR_DEFAULTCOLOR, LR_DEFAULTSIZE, LR_LOADFROMFILE,
+    LR_LOADMAP3DCOLORS, LR_LOADTRANSPARENT, LR_MONOCHROME, LR_SHARED, LR_VGACOLOR
+export WM_CLOSE, WM_DESTROY, WM_LBUTTONDOWN, WM_CREATE, WM_COMMAND
 export WS_EX_CLIENTEDGE, WS_EX_WINDOWEDGE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
     WS_EX_OVERLAPPEDWINDOW, WS_EX_PALETTEWINDOW
 export WS_OVERLAPPED, WS_CAPTION, WS_SYSMENU, WS_THICKFRAME, WS_MINIMIZEBOX,
@@ -11,16 +14,35 @@ export MF_BITMAP, MF_CHECKED, MF_DISABLED, MF_ENABLED, MF_GRAYED, MF_MENUBARBREA
     MF_MENUBREAK, MF_OWNERDRAW, MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED
 export POINT, MSG, @winproc
 export getlasterror, defwindowproc, destroywindow, post_quitmessage, registerclass,
-    unregisterclass, createwindow, showwindow, updatewindow, getmessage, translatemessage,
-    dispatchmessage, iswindow, createmenu, createpopupmenu, appendmenu, setmenu,
+    unregisterclass, createwindow, showwindow, updatewindow, getmessage,
+    translatemessage, dispatchmessage, iswindow, createmenu, createpopupmenu,
+    appendmenu, setmenu, loadimage,
     showwindow_wait, openwindow
 
 ###### Begin Constants #####
+
+##### Image types #####
+const IMAGE_BITMAP = convert(Cint, 0)
+const IMAGE_ICON = convert(Cint, 1)
+const IMAGE_CURSOR = convert(Cint, 2)
+
+##### Resource load flags #####
+const LR_CREATEDIBSECTION = convert(Cuint, 0x00002000)
+const LR_DEFAULTCOLOR = convert(Cuint, 0x00000000)
+const LR_DEFAULTSIZE = convert(Cuint, 0x00000040)
+const LR_LOADFROMFILE = convert(Cuint, 0x00000010)
+const LR_LOADMAP3DCOLORS = convert(Cuint, 0x00001000)
+const LR_LOADTRANSPARENT = convert(Cuint, 0x00000020)
+const LR_MONOCHROME = convert(Cuint, 0x00000001)
+const LR_SHARED = convert(Cuint, 0x00008000)
+const LR_VGACOLOR = convert(Cuint, 0x00000080)
 
 ###### Window Messages #####
 const WM_CLOSE   = convert(Cuint,0x0010)
 const WM_DESTROY = convert(Cuint,0x0002)
 const WM_LBUTTONDOWN = convert(Cuint, 0x0201)
+const WM_CREATE = convert(Cuint, 0x0001)
+const WM_COMMAND = convert(Cuint, 0x0111)
 
 ##### Extended Window Styles #####
 const WS_EX_CLIENTEDGE = convert(Culong,0x00000200)
@@ -266,6 +288,16 @@ function setmenu(hwnd, hmenu)
     ret = ccall((:SetMenu, "user32"), Cint, (Ptr{Cvoid}, Ptr{Cvoid}), hwnd, hmenu)
     err = ret == 0 ? getlasterror() : 0
     (ret, err)
+end
+
+function loadimage(name, imgType, cx, cy, loadFlags)
+    handle = ccall((:LoadImageW, "user32"), Ptr{Cvoid},
+        (Ptr{Cvoid}, Cwstring, Cuint, Cint, Cint, Cuint),
+        C_NULL, name, imgType, cx, cy, loadFlags)
+
+    error = handle == C_NULL ? getlasterror() : 0
+
+    (handle, error)
 end
 
 function showwindow_wait(hwnd)
