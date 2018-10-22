@@ -11,6 +11,12 @@ using Main.WinApi
 openwindow()
 ```
 
+Or, if you insist on "Hello world" being in there somewhere:
+
+```julia
+openwindow(title="Hello world")
+```
+
 ## Motivation
 
 Compared to other native GUI options on the Windows platform, the Win32 API is
