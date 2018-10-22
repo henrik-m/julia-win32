@@ -19,6 +19,6 @@ of the ugliness with idiomatic Julia and see where it takes us.
 
 ## More examples
 
-For more examples, look at the files in the ```examples``` folder. If you
-```include()``` them from the Julia REPL, you need to restart your session
+For more examples, look at the files in the `examples` folder. If you
+`include()` them from the Julia REPL, you need to restart your session
 if you want to run the same or another example.
