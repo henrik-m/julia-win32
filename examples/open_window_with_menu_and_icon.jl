@@ -25,7 +25,7 @@ function mywinproc(hwnd, msg, wParam, lParam)
     elseif msg == WM_DESTROY
         post_quitmessage(0)
     elseif msg == WM_COMMAND
-        if wParam & 0xffff == ID_FILE_EXIT
+        if loword(wParam) == ID_FILE_EXIT
             destroywindow(hwnd)
         end
     else

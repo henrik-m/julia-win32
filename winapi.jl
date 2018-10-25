@@ -12,7 +12,7 @@ export SW_SHOWDEFAULT
 export CW_USEDEFAULT
 export MF_BITMAP, MF_CHECKED, MF_DISABLED, MF_ENABLED, MF_GRAYED, MF_MENUBARBREAK,
     MF_MENUBREAK, MF_OWNERDRAW, MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED
-export POINT, MSG, @winproc
+export POINT, MSG, @winproc, loword, hiword
 export getlasterror, defwindowproc, destroywindow, post_quitmessage, registerclass,
     unregisterclass, createwindow, showwindow, updatewindow, getmessage,
     translatemessage, dispatchmessage, iswindow, createmenu, createpopupmenu,
@@ -126,6 +126,9 @@ MSG() = MSG(C_NULL,0,0,0)
 macro winproc(proc)
     return :( @cfunction($proc, Clonglong, (Ptr{Cvoid},Cuint,Culonglong,Clonglong,)) )
 end
+
+loword(n) = n & 0xffff
+hiword(n) = (n >> 16) & 0xffff
 
 function cwstring(val)
     val == C_NULL || isa(val, Cwstring) ? val :
